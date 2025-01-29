@@ -1,4 +1,4 @@
-# ida-teams-docker
+# Hexvault and Lumina
 IDA Hexvault and Lumina dockerized, refer to `Dockerfile.Hexvault` and `Dockerfile.Lumina` respectively.
 
 ## Setup for Hexvault
