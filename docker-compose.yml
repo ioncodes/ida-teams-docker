@@ -1,0 +1,55 @@
+services:
+  hexvault:
+    build:
+      context: .
+      dockerfile: Dockerfile.Hexvault
+    container_name: hexvault
+    restart: always
+    ports:
+      - "65433:65433"
+    networks:
+      - public_network
+    volumes:
+      - hexvault:/opt/hexvault/files/
+
+  lumina:
+    build:
+      context: .
+      dockerfile: Dockerfile.Lumina
+    container_name: lumina
+    restart: always
+    ports:
+      - "443:443"
+    depends_on:
+      - lumina-mysql
+    networks:
+      - public_network
+      - internal_db
+
+  lumina-mysql:
+    image: mysql:8.0.12
+    container_name: lumina-mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_USER: lumina
+      MYSQL_PASSWORD: lumina
+      MYSQL_ROOT_PASSWORD: lumina
+      MYSQL_DATABASE: lumina
+    ports:
+      - "3306:3306"
+    networks:
+      - internal_db
+    volumes:
+      - lumina:/var/lib/mysql
+      - ./files/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+networks:
+  public_network:
+    driver: bridge
+  internal_db:
+    internal: true
+
+volumes:
+  lumina:
+  hexvault:

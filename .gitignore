@@ -1,2 +1,5 @@
 files/*
 !files/.gitkeep
+!files/lumina.conf
+!files/*.sh
+!files/*.sql
