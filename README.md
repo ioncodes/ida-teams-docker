@@ -11,7 +11,7 @@ IDA Hexvault and Lumina dockerized, refer to `Dockerfile.Hexvault` and `Dockerfi
 1. Put the lumina installer (e.g. `lumina90_x64linux.run`) in `./files/lumina.run`
 2. Put your "setup" script (IFYKYK) in `./files/setup_lumina.py`
 3. Make a mysql container (refer to `docker-compose.yml`)
-4. `docker run -p 443:443 hexvault` or something like that
+4. `docker run -p 443:443 lumina` or something like that
 5. Connect using IDA Pro and create the initial administrator
 
 ## Docker Compose (Hexvault & Lumina)
