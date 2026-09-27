@@ -1,0 +1,8 @@
+*
+!files/
+files/*
+!files/hexvault.run
+!files/lumina.run
+!files/*.sh
+!files/lumina.conf
+!files/setup_*.py

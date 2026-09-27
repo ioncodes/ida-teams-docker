@@ -1,30 +1,21 @@
+# syntax=docker/dockerfile:1
 FROM debian:bookworm-slim
 
-# Update package list
-RUN apt-get update
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl ca-certificates python3 default-mysql-client \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install python
-RUN apt-get install -y python3 default-mysql-client
+COPY files/lumina.run /tmp/lumina.run
+RUN chmod +x /tmp/lumina.run \
+    && /tmp/lumina.run --mode unattended --initialization 0 --service 0 --prefix /opt/lumina \
+    && rm /tmp/lumina.run
 
-# Run installer in files/
-COPY files/* /tmp/
-RUN chmod +x /tmp/*.run
-RUN /tmp/lumina.run --mode unattended --initialization 1 --keep_luminaconf 1 --username lumina --service 0 --prefix /opt/lumina --dbhostname mysql --dbport 3306 --dbuser lumina --dbpass lumina --dbname lumina --service 0
+RUN --mount=type=bind,source=files/setup_lumina.py,target=/tmp/setup_lumina.py \
+    python3 /tmp/setup_lumina.py
 
-# Run funny python file :)
-RUN python3 /tmp/setup_lumina.py
-
-# Use the example configuration
-RUN cp /opt/lumina/lumina.conf.example /opt/lumina/lumina.conf
-
-# Generate a self-signed certificate
-RUN openssl req -x509 -newkey rsa:4096 -keyout /opt/lumina/lumina.key -out /opt/lumina/lumina.crt -days 365 -nodes -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=lumina"
-
-# Fix permissions
-RUN chmod 640 /opt/lumina/lumina.conf /opt/lumina/lumina.crt /opt/lumina/lumina.key /opt/lumina/lumina_server.hexlic
-
-# Copy configuration
-RUN cp /tmp/lumina.conf /opt/lumina/lumina.conf
-
-# Start the server
-ENTRYPOINT ["/tmp/lumina_entry.sh"]
+COPY --chmod=640 files/lumina.conf /opt/lumina/lumina.conf
+COPY --chmod=755 files/server_common.sh files/lumina_entry.sh /usr/local/bin/
+WORKDIR /opt/lumina
+VOLUME ["/opt/lumina/tls"]
+EXPOSE 65432
+ENTRYPOINT ["/usr/local/bin/lumina_entry.sh"]

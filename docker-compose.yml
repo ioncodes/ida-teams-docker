@@ -3,53 +3,59 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.Hexvault
-    container_name: hexvault
-    restart: always
+    platform: linux/amd64
+    restart: unless-stopped
+    mac_address: "${HEXVAULT_MAC_ADDRESS:-02:42:ac:10:00:02}"
     ports:
-      - "65433:65433"
-    networks:
-      - public_network
+      - "${BIND_ADDRESS:-127.0.0.1}:${HEXVAULT_PORT:-65433}:65433"
     volumes:
-      - hexvault:/opt/hexvault/files/
+      - hexvault:/opt/hexvault/files
+      - hexvault-tls:/opt/hexvault/tls
 
   lumina:
     build:
       context: .
       dockerfile: Dockerfile.Lumina
-    container_name: lumina
-    restart: always
+    platform: linux/amd64
+    restart: unless-stopped
+    mac_address: "${LUMINA_MAC_ADDRESS:-02:42:ac:10:00:03}"
     ports:
-      - "443:443"
+      - "${BIND_ADDRESS:-127.0.0.1}:${LUMINA_PORT:-443}:65432"
     depends_on:
-      - lumina-mysql
+      lumina-mysql:
+        condition: service_healthy
     networks:
-      - public_network
+      - default
       - internal_db
+    volumes:
+      - lumina-tls:/opt/lumina/tls
 
   lumina-mysql:
-    image: mysql:8.0.12
-    container_name: lumina-mysql
+    image: mysql:8.0
     command: --default-authentication-plugin=mysql_native_password
-    restart: always
+    restart: unless-stopped
     environment:
       MYSQL_USER: lumina
       MYSQL_PASSWORD: lumina
       MYSQL_ROOT_PASSWORD: lumina
       MYSQL_DATABASE: lumina
-    ports:
-      - "3306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql -h 127.0.0.1 -u lumina lumina -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
     networks:
       - internal_db
     volumes:
       - lumina:/var/lib/mysql
-      - ./files/init.sql:/docker-entrypoint-initdb.d/init.sql
 
 networks:
-  public_network:
-    driver: bridge
   internal_db:
     internal: true
 
 volumes:
   lumina:
   hexvault:
+  lumina-tls:
+  hexvault-tls:

@@ -1,13 +1,20 @@
 #!/bin/sh
+set -eu
+. /usr/local/bin/server_common.sh
 
-DB_NAME="lumina"
-DB_HOST="lumina-mysql"
-DB_PORT="3306"
-DB_USER="lumina"
-DB_PASS="lumina"
+prepare_server /opt/lumina lumina_server.hexlic lumina
+set -- /opt/lumina/lumina_server \
+    --license-file /opt/lumina/lumina_server.hexlic \
+    --config-file /opt/lumina/lumina.conf \
+    --certchain-file /opt/lumina/tls/server.crt \
+    --privkey-file /opt/lumina/tls/server.key
 
-if ! mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "SHOW TABLES LIKE 'users'" | grep -q "users"; then
-    /opt/lumina/lumina_server --config-file /opt/lumina/lumina.conf --recreate-schema lumina
+# A failed connection must abort startup, never trigger schema recreation.
+tables=$(MYSQL_PWD=lumina mysql --connect-timeout=10 \
+    -h lumina-mysql -P 3306 -u lumina -N -B lumina -e 'SHOW TABLES')
+if [ -z "$tables" ]; then
+    "$@" --recreate-schema lumina
+else
+    "$@" --upgrade-schema
 fi
-
-/opt/lumina/lumina_server --license-file /opt/lumina/lumina_server.hexlic --config-file /opt/lumina/lumina.conf --certchain-file /opt/lumina/lumina.crt --privkey-file /opt/lumina/lumina.key
+exec "$@" --port-number 65432

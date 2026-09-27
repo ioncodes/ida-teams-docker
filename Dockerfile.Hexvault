@@ -1,30 +1,23 @@
+# syntax=docker/dockerfile:1
 FROM debian:bookworm-slim
 
-# Create volume for files
-VOLUME /opt/hexvault/files
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl ca-certificates python3 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Update package list
-RUN apt-get update
+COPY files/hexvault.run /tmp/hexvault.run
+RUN chmod +x /tmp/hexvault.run \
+    && /tmp/hexvault.run --mode unattended --initialization 0 --service 0 --prefix /opt/hexvault \
+    && rm /tmp/hexvault.run
 
-# Install python
-RUN apt-get install -y python3
+RUN --mount=type=bind,source=files/setup_hexvault.py,target=/tmp/setup_hexvault.py \
+    python3 /tmp/setup_hexvault.py
 
-# Run installer in files/
-COPY files/* /tmp/
-RUN chmod +x /tmp/*.run
-RUN /tmp/hexvault.run --mode unattended --initialization 1 --username hexvault --service 0 --prefix /opt/hexvault
+RUN cp /opt/hexvault/hexvault.conf.example /opt/hexvault/hexvault.conf \
+    && chmod 640 /opt/hexvault/hexvault.conf
 
-# Run funny python file :)
-RUN python3 /tmp/setup_hexvault.py
-
-# Use the example configuration
-RUN cp /opt/hexvault/hexvault.conf.example /opt/hexvault/hexvault.conf
-
-# Generate a self-signed certificate
-RUN openssl req -x509 -newkey rsa:4096 -keyout /opt/hexvault/hexvault.key -out /opt/hexvault/hexvault.crt -days 365 -nodes -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=hexvault"
-
-# Fix permissions
-RUN chmod 640 /opt/hexvault/hexvault.conf /opt/hexvault/hexvault.crt /opt/hexvault/hexvault.key /opt/hexvault/teams_server.hexlic
-
-# Start the server
-ENTRYPOINT ["/tmp/hexvault_entry.sh"]
+COPY --chmod=755 files/server_common.sh files/hexvault_entry.sh /usr/local/bin/
+WORKDIR /opt/hexvault
+VOLUME ["/opt/hexvault/files", "/opt/hexvault/tls"]
+EXPOSE 65433
+ENTRYPOINT ["/usr/local/bin/hexvault_entry.sh"]
